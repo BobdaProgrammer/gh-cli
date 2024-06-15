@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"os"
 
@@ -61,7 +62,10 @@ func repos(username string) {
 	if err != nil {
 		panic("couldn't parse JSON response")
 	}
-
+	nameWidth := int(math.Round(float64(size.Width / 6.0)))
+	descWidth := int(math.Round(float64(size.Width / 2.0)))
+	starWidth := int(math.Round(float64(size.Width / 22.0)))
+	langWidth := int(math.Round(float64(size.Width / 12.0)))
 	t := table.New().
 		Border(lipgloss.NormalBorder()).
 		BorderStyle(lipgloss.NewStyle().
@@ -70,9 +74,24 @@ func repos(username string) {
 			return lipgloss.NewStyle().PaddingRight(1)
 		}).
 		Headers("NAME", "DESCRIPTION", "STARS", "LANGUAGE")
-	t.Row("iew0jfe0rjfer0jgeroigmnroeignmreiomgoerimgoerimgoremgrieg", "oiwefmneifmeorifmeroigmerigmeimgoerimgreoimgeoimgeroigmreoigmeroigmeroimgoerigmreoimger", "9875640786098760", "suminanimiamaiai")
 	for _, repo := range repositories {
-		t.Row(repo.Name, repo.Description, fmt.Sprint(repo.Stars), repo.Language)
+		var name string = repo.Name
+		if len(name) > nameWidth {
+			name = name[:nameWidth-1] + "…"
+		}
+		var desc string = repo.Description
+		if len(desc) > descWidth {
+			desc = desc[:descWidth-1] + "…"
+		}
+		var star string = fmt.Sprint(repo.Stars)
+		if len(star) > starWidth {
+			star = star[:starWidth-1] + "…"
+		}
+		var lang string = repo.Language
+		if len(lang) > langWidth {
+			lang = lang[:langWidth-1] + "…"
+		}
+		t.Row(name, desc, star, lang)
 	}
 	fmt.Println(t)
 }
