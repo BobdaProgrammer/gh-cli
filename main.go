@@ -29,6 +29,17 @@ type Repository struct {
 	Language    string `json:"language"`
 }
 
+type Follower struct {
+	Name      string `json:"login"`
+	GithubUrl string `json:"url"`
+	StarUrl   string `json:"starred_url"`
+}
+type Empty struct {
+}
+type Bio struct {
+	Bio string `json:"bio"`
+}
+
 func init() {
 	err := termbox.Init()
 	if err != nil {
@@ -38,39 +49,44 @@ func init() {
 	size.Width = width
 	size.Height = height
 }
-func widths(proportions []float64,text []string)[]string{
-	var out []string;
-	for i,proportion := range proportions{
-		width:=int(math.Round(float64(size.Width) / proportion))
+func widths(proportions []float64, text []string) []string {
+	var out []string
+	for i, proportion := range proportions {
+		width := int(math.Round(float64(size.Width) / proportion))
 		val := text[i]
-		if len(val)>width{
-			val = val[:width-1]+"…"
+		if len(val) > width {
+			val = val[:width-1] + "…"
 		}
-		out=append(out, val)
+		out = append(out, val)
 	}
 	return out
 }
-func repos(username string) {
-	url := "https://api.github.com/users/" + username + "/repos"
+
+func request(url string) []byte {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		panic("couldn't fetch repositories")
+		panic("couldn't fetch Github data")
 	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		panic("couldn't fetch repositories")
+		panic("couldn't fetch Github data")
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		panic("couldn't read response body")
+		panic("couldn't fetch Github data")
 	}
+	return body
+}
 
+func repos(username string) {
+	url := "https://api.github.com/users/" + username + "/repos"
+	body := request(url)
 	var repositories []Repository
-	err = json.Unmarshal(body, &repositories)
+	err := json.Unmarshal(body, &repositories)
 	if err != nil {
 		panic("couldn't parse JSON response")
 	}
@@ -95,8 +111,45 @@ func repos(username string) {
 	fmt.Println(t)
 }
 
-func followers(username string) []string {
-	return nil
+func followers(username string) {
+	url := "https://api.github.com/users/" + username + "/followers"
+	body := request(url)
+	var followers []Follower
+	err := json.Unmarshal(body, &followers)
+	if err != nil {
+		panic("couldn't fetch JSON response")
+	}
+	nameWidth := 3.0
+	descWidth := 1.25
+	starWidth := 16.0
+	var Tablewidths []float64 = []float64{nameWidth, descWidth, starWidth}
+	t := table.New().
+		Border(lipgloss.NormalBorder()).
+		BorderStyle(lipgloss.NewStyle().
+			Foreground(lipgloss.Color("99"))).
+		StyleFunc(func(row, col int) lipgloss.Style {
+			return lipgloss.NewStyle().PaddingRight(1)
+		}).
+		Headers("NAME", "BIO", "STARS")
+	for _, follower := range followers {
+		about := request(follower.GithubUrl)
+		var bio Bio
+		err = json.Unmarshal(about, &bio)
+		if err != nil {
+			panic("couldn't fetch JSON response")
+		}
+		stars := request(follower.StarUrl[:len(follower.StarUrl)-15])
+		var starsCount []Empty
+		err = json.Unmarshal(stars, &starsCount)
+		if err != nil {
+			panic("couldn't fetch JSON response")
+		}
+
+		var data []string = []string{follower.Name, bio.Bio, fmt.Sprint(len(starsCount))}
+		var out []string = widths(Tablewidths, data)
+		t.Row(out[0], out[1], out[2])
+	}
+	fmt.Println(t)
 }
 func following(username string) []string {
 	return nil
@@ -124,12 +177,13 @@ func main() {
 		repos(name)
 	case "-fr":
 		name := options[1]
-		fmt.Println(name + "'s followers")
+		fmt.Println(name + "'s followers:")
+		followers(name)
 	case "-fi":
 		name := options[1]
-		fmt.Println(name + "'s following")
+		fmt.Println(name + "'s following:")
 	case "-i":
 		repo := options[1]
-		fmt.Println(repo + "'s issues")
+		fmt.Println(repo + "'s issues:")
 	}
 }
