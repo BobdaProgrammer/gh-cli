@@ -111,17 +111,22 @@ func repos(username string) {
 	fmt.Println(t)
 }
 
-func followers(username string) {
-	url := "https://api.github.com/users/" + username + "/followers"
+func follow(username string, follower bool) {
+	var url string
+	if follower {
+		url = "https://api.github.com/users/" + username + "/followers"
+	} else {
+		url = "https://api.github.com/users/" + username + "/following"
+	}
 	body := request(url)
 	var followers []Follower
 	err := json.Unmarshal(body, &followers)
 	if err != nil {
 		panic("couldn't fetch JSON response")
 	}
-	nameWidth := 3.0
-	descWidth := 1.25
-	starWidth := 16.0
+	nameWidth := 5.0
+	descWidth := 1.5
+	starWidth := 20.0
 	var Tablewidths []float64 = []float64{nameWidth, descWidth, starWidth}
 	t := table.New().
 		Border(lipgloss.NormalBorder()).
@@ -151,9 +156,6 @@ func followers(username string) {
 	}
 	fmt.Println(t)
 }
-func following(username string) []string {
-	return nil
-}
 func issues(repo string) []string {
 	return nil
 }
@@ -178,10 +180,11 @@ func main() {
 	case "-fr":
 		name := options[1]
 		fmt.Println(name + "'s followers:")
-		followers(name)
+		follow(name, true)
 	case "-fi":
 		name := options[1]
 		fmt.Println(name + "'s following:")
+		follow(name, false)
 	case "-i":
 		repo := options[1]
 		fmt.Println(repo + "'s issues:")
