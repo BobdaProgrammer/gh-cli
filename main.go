@@ -38,6 +38,18 @@ func init() {
 	size.Width = width
 	size.Height = height
 }
+func widths(proportions []float64,text []string)[]string{
+	var out []string;
+	for i,proportion := range proportions{
+		width:=int(math.Round(float64(size.Width) / proportion))
+		val := text[i]
+		if len(val)>width{
+			val = val[:width-1]+"…"
+		}
+		out=append(out, val)
+	}
+	return out
+}
 func repos(username string) {
 	url := "https://api.github.com/users/" + username + "/repos"
 	req, err := http.NewRequest("GET", url, nil)
@@ -62,10 +74,11 @@ func repos(username string) {
 	if err != nil {
 		panic("couldn't parse JSON response")
 	}
-	nameWidth := int(math.Round(float64(size.Width / 6.0)))
-	descWidth := int(math.Round(float64(size.Width / 2.0)))
-	starWidth := int(math.Round(float64(size.Width / 22.0)))
-	langWidth := int(math.Round(float64(size.Width / 12.0)))
+	nameWidth := 6.0
+	descWidth := 1.75
+	starWidth := 22.0
+	langWidth := 12.0
+	var Tablewidths []float64 = []float64{nameWidth, descWidth, starWidth, langWidth}
 	t := table.New().
 		Border(lipgloss.NormalBorder()).
 		BorderStyle(lipgloss.NewStyle().
@@ -75,23 +88,9 @@ func repos(username string) {
 		}).
 		Headers("NAME", "DESCRIPTION", "STARS", "LANGUAGE")
 	for _, repo := range repositories {
-		var name string = repo.Name
-		if len(name) > nameWidth {
-			name = name[:nameWidth-1] + "…"
-		}
-		var desc string = repo.Description
-		if len(desc) > descWidth {
-			desc = desc[:descWidth-1] + "…"
-		}
-		var star string = fmt.Sprint(repo.Stars)
-		if len(star) > starWidth {
-			star = star[:starWidth-1] + "…"
-		}
-		var lang string = repo.Language
-		if len(lang) > langWidth {
-			lang = lang[:langWidth-1] + "…"
-		}
-		t.Row(name, desc, star, lang)
+		var data []string = []string{repo.Name, repo.Description, fmt.Sprint(repo.Stars), repo.Language}
+		var out []string = widths(Tablewidths, data)
+		t.Row(out[0], out[1], out[2], out[3])
 	}
 	fmt.Println(t)
 }
@@ -109,6 +108,16 @@ func main() {
 	options := os.Args[1:]
 	flag := options[0]
 	switch flag {
+	case "-h":
+		var help string = `
+		commands:
+			-h						help/instructions
+			-r <username>			list of repos from username
+			-fr <username>			list of followers from username
+			-fi <username>			list of following from username
+			-i <username>/<repo>	list of issues from repo
+		`
+		fmt.Print(help)
 	case "-r": //repos
 		name := options[1]
 		fmt.Println(name + "'s repos:")
